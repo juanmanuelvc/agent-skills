@@ -1,0 +1,10 @@
+{
+  "name": "agent-skills",
+  "version": "1.0.0",
+  "description": "Personal agent skills and push-blocking hooks for Cursor",
+  "author": {
+    "name": "juanmanuelvc"
+  },
+  "skills": "./skills/",
+  "hooks": "./hooks/cursor-hooks.json"
+}

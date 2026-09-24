@@ -1,0 +1,6 @@
+{
+  "name": "agent-skills",
+  "version": "1.0.0",
+  "description": "Personal agent skills for Codex (push policy via git-workflow skill)",
+  "skills": "./skills/"
+}

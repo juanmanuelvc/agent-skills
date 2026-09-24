@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PR drill</title>
+  <style>
+    :root {
+      --text: #1e1e1e;
+      --text-2: #5c5c5c;
+      --text-3: #8a8a8a;
+      --bg: #ffffff;
+      --fill: #f4f4f4;
+      --stroke: #e3e3e3;
+      --accent: #1a6fcc;
+      --on-accent: #ffffff;
+      --green: #1f8a65;
+      --red: #c42b1c;
+      --add-bg: #e8f6ef;
+      --del-bg: #fdeceb;
+      --chip-bg: #ddf0ff;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --text: #e8e8e8;
+        --text-2: #b0b0b0;
+        --text-3: #808080;
+        --bg: #1a1a1a;
+        --fill: #2a2a2a;
+        --stroke: #3a3a3a;
+        --accent: #4d9eff;
+        --on-accent: #0b0b0b;
+        --green: #52b896;
+        --red: #f07067;
+        --add-bg: #143328;
+        --del-bg: #3a1a18;
+        --chip-bg: #16344f;
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); color: var(--text); font: 14px/20px var(--sans); }
+    body { padding: 20px 24px 48px; }
+    h1 { font-size: 24px; line-height: 30px; font-weight: 590; margin: 0 0 6px; }
+    .muted { color: var(--text-2); font-size: 12px; line-height: 16px; }
+    .tertiary { color: var(--text-3); font-size: 12px; line-height: 16px; }
+    .row { display: flex; align-items: center; gap: 8px; }
+    .branchline { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 4px 0 6px; }
+    .chip {
+      background: var(--chip-bg); border: 1px solid var(--stroke); border-radius: 6px;
+      color: var(--accent); font: 12px/18px var(--mono); padding: 1px 6px; white-space: nowrap;
+    }
+    .stats { display: flex; flex-wrap: wrap; gap: 24px; margin: 16px 0; }
+    .stat-value { font-size: 20px; font-weight: 590; }
+    .stat-label { font-size: 12px; color: var(--text-3); }
+    input[type="search"], textarea {
+      width: 100%; max-width: 320px; border: 1px solid var(--stroke); background: var(--bg);
+      color: var(--text); border-radius: 6px; padding: 6px 10px; font: inherit;
+    }
+    textarea { max-width: none; min-height: 72px; resize: vertical; }
+    .pill {
+      border: 1px solid var(--stroke); background: var(--bg); color: var(--text);
+      border-radius: 999px; padding: 4px 12px; font: inherit; cursor: pointer;
+    }
+    .pill.active { background: var(--fill); border-color: var(--text-3); }
+    .btn {
+      border: 1px solid var(--stroke); background: var(--bg); color: var(--text);
+      border-radius: 6px; padding: 4px 10px; font: inherit; cursor: pointer;
+    }
+    .btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+    .btn.ghost { border-color: transparent; }
+    .btn.selected { background: var(--fill); }
+    .filters-cap { display: flex; justify-content: space-between; gap: 16px; margin: 16px 0 6px; }
+    .filters {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      overflow-x: auto; margin-bottom: 16px;
+    }
+    .filters > div { display: flex; gap: 6px; flex-shrink: 0; }
+    hr { border: 0; border-top: 1px solid var(--stroke); margin: 0 0 16px; }
+    .layout { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: 16px; align-items: start; }
+    .file-row { display: flex; align-items: center; gap: 6px; margin: 2px 0; min-width: 0; }
+    .file-row .name { flex: 1; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .diffstats { font-variant-numeric: tabular-nums; font-size: 12px; white-space: nowrap; }
+    .add { color: var(--green); }
+    .del { color: var(--red); }
+    .card { border: 1px solid var(--stroke); border-radius: 8px; overflow: hidden; }
+    .card-h { display: flex; justify-content: space-between; gap: 8px; padding: 8px 12px; font-size: 12px; border-bottom: 1px solid var(--stroke); }
+    .diff { overflow: auto; max-height: 70vh; font: 12px/18px var(--mono); }
+    .dline { display: grid; grid-template-columns: 48px 1fr; }
+    .dline .ln { color: var(--text-3); text-align: right; padding: 0 8px; user-select: none; border-right: 3px solid transparent; }
+    .dline.added { background: var(--add-bg); }
+    .dline.removed { background: var(--del-bg); }
+    .dline.added .ln { color: var(--green); border-right-color: var(--green); }
+    .dline.removed .ln { color: var(--red); border-right-color: var(--red); }
+    .dline .ct { white-space: pre; padding: 0 8px; }
+    .panel { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+    .commit-row {
+      display: grid; grid-template-columns: 76px 22px minmax(0, 1fr);
+      min-width: 0; outline: none;
+    }
+    .commit-sha { color: var(--text-3); font: 12px/20px var(--mono); }
+    .commit-rail {
+      align-self: stretch; border-left: 1px solid var(--text-3);
+      margin-left: 7px; position: relative;
+    }
+    .commit-node {
+      background: var(--accent); border: 2px solid var(--accent); border-radius: 50%;
+      display: block; height: 9px; left: -5px; position: absolute; top: 5px; width: 9px;
+    }
+    .commit-content { min-width: 0; padding-bottom: 14px; }
+    .commit-line { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; }
+    .commit-subject { overflow-wrap: anywhere; }
+    .commit-extra { display: none; margin-top: 5px; }
+    .commit-row:hover .commit-extra, .commit-row:focus-within .commit-extra { display: block; }
+    .commit-base .commit-rail { border-left-color: transparent; }
+    .commit-base .commit-node {
+      background: var(--bg); border-color: var(--text-3); height: 11px; top: 4px; width: 11px;
+    }
+    @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="row" style="width: 100%; justify-content: space-between; gap: 12px; margin-bottom: 6px">
+    <h1 style="margin: 0">PR drill</h1>
+    <div class="row">
+      <span class="tertiary" id="reload-hint" style="display:none"></span>
+      <button class="btn primary" type="button" id="reload">Reload</button>
+    </div>
+  </div>
+  <div class="muted" id="repo"></div>
+  <div class="branchline" id="branchline"></div>
+  <div class="muted" id="subtitle">Files changed · local review, nothing is posted</div>
+  <div class="row" id="view-pills" style="margin: 10px 0 0"></div>
+  <div class="stats">
+    <div><div class="stat-value" id="stat-files"></div><div class="stat-label">Files</div></div>
+    <div><div class="stat-value" id="stat-commits"></div><div class="stat-label">Commits</div></div>
+    <div><div class="stat-value" id="stat-lines"></div><div class="stat-label" id="stat-lines-label">Lines</div></div>
+    <div id="file-review-stats">
+      <div class="stats" style="margin:0;gap:24px">
+        <div><div class="stat-value" id="stat-reviewed"></div><div class="stat-label">Reviewed</div></div>
+        <div><div class="stat-value" id="stat-pending"></div><div class="stat-label">Pending</div></div>
+      </div>
+    </div>
+    <div id="commit-flag-stats" style="display:none">
+      <div><div class="stat-value" id="stat-flagged"></div><div class="stat-label">Flagged messages</div></div>
+    </div>
+  </div>
+  <div id="files-pane">
+  <input id="query" type="search" placeholder="Filter by path…" />
+  <div class="filters-cap">
+    <div class="tertiary">Change type</div>
+    <div class="tertiary">Review state</div>
+  </div>
+  <div class="filters">
+    <div id="status-pills"></div>
+    <div id="review-pills"></div>
+  </div>
+  <hr />
+  <div class="layout">
+    <div>
+      <div class="tertiary" id="list-count"></div>
+      <div id="empty" style="display:none" class="row">
+        <span class="muted">No files match.</span>
+        <button class="btn ghost" type="button" id="clear-filters">Clear filters</button>
+      </div>
+      <div id="file-list"></div>
+    </div>
+    <div class="panel">
+      <div class="card">
+        <div class="card-h"><span id="current-path"></span><span class="diffstats" id="current-stats"></span></div>
+        <div class="diff" id="diff"></div>
+      </div>
+      <div class="row">
+        <button class="btn primary" type="button" id="copy-path">Copy path</button>
+        <label class="row"><input type="checkbox" id="mark-reviewed" /> Reviewed</label>
+        <span class="tertiary" id="current-status"></span>
+      </div>
+      <div class="muted">Notes stay in this browser. They are not committed or posted.</div>
+      <textarea id="notes" placeholder="Your notes on this file…"></textarea>
+    </div>
+  </div>
+  </div>
+  <div id="commits-pane" style="display:none">
+    <hr />
+    <div class="tertiary" id="commit-list-count"></div>
+    <div id="commit-list" style="margin-top:8px"></div>
+  </div>
+  <script>
+    let DATA = __PAYLOAD__;
+    const storeKey = DATA.storeKey;
+    const saved = JSON.parse(localStorage.getItem(storeKey) || "{}");
+    const FLAG_LABEL = {
+      fixup: "fixup leftover",
+      wip: "WIP",
+      "no-type": "no type prefix",
+      "long-subject": "subject > 72",
+    };
+    let COMMITS = DATA.commits || [];
+    const state = {
+      view: "files",
+      query: "",
+      status: "all",
+      review: "none",
+      selected: saved.selected || (DATA.files[0] && DATA.files[0].path) || "",
+      reviewed: saved.reviewed || {},
+      reviewedDigest: saved.reviewedDigest || {},
+      notes: saved.notes || {},
+    };
+
+    function persist() {
+      localStorage.setItem(storeKey, JSON.stringify({
+        selected: state.selected, reviewed: state.reviewed,
+        reviewedDigest: state.reviewedDigest, notes: state.notes,
+      }));
+    }
+
+    function markReviewed(file, checked) {
+      state.reviewed[file.path] = checked;
+      if (checked) state.reviewedDigest[file.path] = file.digest;
+      else delete state.reviewedDigest[file.path];
+      persist();
+    }
+
+    // A file that changed since it was reviewed goes back to pending. Files reviewed
+    // before digests were recorded adopt the current one instead of being reopened.
+    function reopenChangedFiles() {
+      let changed = false;
+      DATA.files.forEach((file) => {
+        if (!state.reviewed[file.path]) return;
+        const seen = state.reviewedDigest[file.path];
+        if (seen === undefined) {
+          state.reviewedDigest[file.path] = file.digest;
+          changed = true;
+        } else if (seen !== file.digest) {
+          delete state.reviewed[file.path];
+          delete state.reviewedDigest[file.path];
+          changed = true;
+        }
+      });
+      if (changed) persist();
+    }
+
+    function fileName(path) {
+      const parts = path.split("/");
+      return parts[parts.length - 1] || path;
+    }
+
+    function statusCount(status) {
+      return status === "all" ? DATA.files.length : DATA.files.filter((f) => f.status === status).length;
+    }
+
+    function reviewedCount() {
+      return DATA.files.filter((f) => state.reviewed[f.path]).length;
+    }
+
+    function visibleFiles() {
+      const q = state.query.trim().toLowerCase();
+      return DATA.files.filter((f) => {
+        if (state.status !== "all" && f.status !== state.status) return false;
+        if (state.review === "reviewed" && !state.reviewed[f.path]) return false;
+        if (state.review === "pending" && state.reviewed[f.path]) return false;
+        if (q && !f.path.toLowerCase().includes(q)) return false;
+        return true;
+      });
+    }
+
+    function currentFile() {
+      return DATA.files.find((f) => f.path === state.selected) || DATA.files[0];
+    }
+
+    function pill(label, active, onClick, title) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "pill" + (active ? " active" : "");
+      b.textContent = label;
+      if (title) b.title = title;
+      b.addEventListener("click", onClick);
+      return b;
+    }
+
+    function render() {
+      const current = currentFile();
+      const reviewed = reviewedCount();
+      const pending = DATA.files.length - reviewed;
+      const flagged = COMMITS.filter((c) => c.flags && c.flags.length).length;
+      document.getElementById("repo").textContent = DATA.repo;
+      const branchline = document.getElementById("branchline");
+      branchline.replaceChildren();
+      const head = document.createElement("span");
+      head.className = "chip";
+      head.textContent = DATA.branch;
+      const into = document.createElement("span");
+      into.className = "tertiary";
+      into.textContent = "into";
+      const base = document.createElement("span");
+      base.className = "chip";
+      base.textContent = DATA.base;
+      const shas = document.createElement("span");
+      shas.className = "tertiary";
+      shas.textContent = DATA.baseSha + "..." + DATA.headSha + (DATA.unpushed ? " · not pushed" : "");
+      branchline.append(head, into, base, shas);
+
+      document.getElementById("subtitle").textContent = state.view === "files"
+        ? "Files changed · local review, nothing is posted" + (DATA.dirty ? " · working tree included" : "")
+        : "Commit sequence · newest first · hover for details";
+      const viewHost = document.getElementById("view-pills");
+      viewHost.replaceChildren();
+      viewHost.appendChild(pill("Files", state.view === "files", () => { state.view = "files"; render(); }));
+      viewHost.appendChild(pill("Commits", state.view === "commits", () => { state.view = "commits"; render(); }));
+
+      document.getElementById("files-pane").style.display = state.view === "files" ? "block" : "none";
+      document.getElementById("commits-pane").style.display = state.view === "commits" ? "block" : "none";
+      document.getElementById("file-review-stats").style.display = state.view === "files" ? "block" : "none";
+      document.getElementById("commit-flag-stats").style.display = state.view === "commits" ? "block" : "none";
+
+      document.getElementById("stat-lines-label").textContent = "Lines vs " + DATA.base;
+      document.getElementById("stat-files").textContent = String(DATA.files.length);
+      document.getElementById("stat-commits").textContent = String(COMMITS.length);
+      document.getElementById("stat-flagged").textContent = String(flagged);
+      document.getElementById("stat-lines").innerHTML =
+        '<span class="add">+' + DATA.additions + '</span> / <span class="del">&minus;' + DATA.deletions + '</span>';
+      document.getElementById("stat-reviewed").textContent = String(reviewed);
+      document.getElementById("stat-pending").textContent = String(pending);
+
+      if (state.view === "commits") {
+        document.getElementById("commit-list-count").textContent = COMMITS.length + " commits";
+        const clist = document.getElementById("commit-list");
+        clist.replaceChildren();
+        COMMITS.forEach((item) => {
+          const row = document.createElement("div");
+          row.className = "commit-row";
+          row.tabIndex = 0;
+          const sha = document.createElement("span");
+          sha.className = "commit-sha";
+          sha.textContent = item.shortSha;
+          const rail = document.createElement("span");
+          rail.className = "commit-rail";
+          const node = document.createElement("span");
+          node.className = "commit-node";
+          rail.appendChild(node);
+          const content = document.createElement("div");
+          content.className = "commit-content";
+          const line = document.createElement("div");
+          line.className = "commit-line";
+          const subject = document.createElement("span");
+          subject.className = "commit-subject";
+          subject.textContent = item.subject;
+          const meta = document.createElement("span");
+          meta.className = "tertiary";
+          meta.textContent = item.author + " · " + String(item.date).slice(0, 10);
+          line.append(subject, meta);
+          const extra = document.createElement("div");
+          extra.className = "commit-extra";
+          const body = document.createElement("div");
+          body.className = "muted";
+          body.style.whiteSpace = "pre-wrap";
+          body.textContent = item.body || "No body";
+          const stats = document.createElement("div");
+          stats.className = "row tertiary";
+          stats.innerHTML =
+            item.files + ' files · <span class="add">+' + item.additions +
+            '</span> <span class="del">&minus;' + item.deletions + "</span>";
+          (item.flags || []).forEach((flag) => {
+            stats.appendChild(pill(FLAG_LABEL[flag] || flag, true, () => {}));
+          });
+          extra.append(body, stats);
+          content.append(line, extra);
+          row.append(sha, rail, content);
+          clist.appendChild(row);
+        });
+        const baseRow = document.createElement("div");
+        baseRow.className = "commit-row commit-base";
+        const baseSha = document.createElement("span");
+        baseSha.className = "commit-sha";
+        baseSha.textContent = DATA.baseSha;
+        const baseRail = document.createElement("span");
+        baseRail.className = "commit-rail";
+        const baseNode = document.createElement("span");
+        baseNode.className = "commit-node";
+        baseRail.appendChild(baseNode);
+        const baseLabel = document.createElement("div");
+        baseLabel.className = "commit-content muted";
+        baseLabel.textContent = "Branched from " + DATA.base;
+        baseRow.append(baseSha, baseRail, baseLabel);
+        clist.appendChild(baseRow);
+        return;
+      }
+
+      if (!current) return;
+
+      const statusHost = document.getElementById("status-pills");
+      statusHost.replaceChildren();
+      ["all", "added", "modified", "deleted"].forEach((status) => {
+        const n = statusCount(status);
+        if (status !== "all" && n === 0) return;
+        const label = { all: "All", added: "Added", modified: "Modified", deleted: "Deleted" }[status] + " " + n;
+        statusHost.appendChild(pill(label, state.status === status, () => { state.status = status; render(); }, "Show only " + status + " files"));
+      });
+
+      const reviewHost = document.getElementById("review-pills");
+      reviewHost.replaceChildren();
+      reviewHost.appendChild(pill("Reviewed " + reviewed, state.review === "reviewed", () => {
+        state.review = state.review === "reviewed" ? "none" : "reviewed";
+        render();
+      }, "Toggle off to show reviewed and pending together"));
+      reviewHost.appendChild(pill("Pending " + pending, state.review === "pending", () => {
+        state.review = state.review === "pending" ? "none" : "pending";
+        render();
+      }, "Toggle off to show reviewed and pending together"));
+
+      const visible = visibleFiles();
+      document.getElementById("list-count").textContent =
+        visible.length === DATA.files.length ? DATA.files.length + " files" : visible.length + " of " + DATA.files.length + " files";
+      document.getElementById("empty").style.display = visible.length === 0 ? "flex" : "none";
+
+      const list = document.getElementById("file-list");
+      list.replaceChildren();
+      visible.forEach((file) => {
+        const row = document.createElement("div");
+        row.className = "file-row";
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = Boolean(state.reviewed[file.path]);
+        cb.addEventListener("change", () => {
+          markReviewed(file, cb.checked);
+          render();
+        });
+        const name = document.createElement("button");
+        name.type = "button";
+        name.className = "btn ghost name" + (file.path === current.path ? " selected" : "");
+        name.textContent = fileName(file.path);
+        name.title = file.path;
+        name.addEventListener("click", () => { state.selected = file.path; persist(); render(); });
+        const stats = document.createElement("span");
+        stats.className = "diffstats";
+        stats.innerHTML = '<span class="add">+' + file.additions + '</span> <span class="del">&minus;' + file.deletions + '</span>';
+        row.append(cb, name, stats);
+        list.appendChild(row);
+      });
+
+      document.getElementById("current-path").textContent = current.path;
+      document.getElementById("current-stats").innerHTML =
+        '<span class="add">+' + current.additions + '</span> <span class="del">&minus;' + current.deletions + '</span>';
+      document.getElementById("current-status").textContent = current.status;
+      const mark = document.getElementById("mark-reviewed");
+      mark.checked = Boolean(state.reviewed[current.path]);
+      document.getElementById("notes").value = state.notes[current.path] || "";
+
+      const diff = document.getElementById("diff");
+      diff.replaceChildren();
+      const lines = DATA.diffs[current.path] || [];
+      lines.forEach((line) => {
+        const row = document.createElement("div");
+        row.className = "dline " + line.type;
+        const ln = document.createElement("span");
+        ln.className = "ln";
+        ln.textContent = line.lineNumber != null ? String(line.lineNumber) : "";
+        const ct = document.createElement("span");
+        ct.className = "ct";
+        ct.textContent = line.content;
+        row.append(ln, ct);
+        diff.appendChild(row);
+      });
+    }
+
+    document.getElementById("query").addEventListener("input", (e) => {
+      state.query = e.target.value;
+      render();
+    });
+    document.getElementById("clear-filters").addEventListener("click", () => {
+      state.status = "all";
+      state.review = "none";
+      state.query = "";
+      document.getElementById("query").value = "";
+      render();
+    });
+    document.getElementById("copy-path").addEventListener("click", async () => {
+      const current = currentFile();
+      if (!current) return;
+      await navigator.clipboard.writeText(current.path);
+    });
+    document.getElementById("mark-reviewed").addEventListener("change", (e) => {
+      const current = currentFile();
+      if (!current) return;
+      markReviewed(current, e.target.checked);
+      render();
+    });
+    document.getElementById("notes").addEventListener("input", (e) => {
+      const current = currentFile();
+      if (!current) return;
+      state.notes[current.path] = e.target.value;
+      persist();
+    });
+    document.getElementById("reload").addEventListener("click", async () => {
+      const button = document.getElementById("reload");
+      const hint = document.getElementById("reload-hint");
+      button.disabled = true;
+      button.textContent = "Reloading…";
+      hint.style.display = "none";
+      try {
+        const response = await fetch("/api/payload", { cache: "no-store" });
+        if (!response.ok) throw new Error("Reload returned " + response.status);
+        DATA = await response.json();
+        COMMITS = DATA.commits || [];
+        reopenChangedFiles();
+        if (!DATA.files.some((file) => file.path === state.selected)) {
+          state.selected = (DATA.files[0] && DATA.files[0].path) || "";
+          persist();
+        }
+        render();
+      } catch (error) {
+        hint.textContent = location.protocol === "file:"
+          ? "Reload needs the localhost server — re-run generate.py and open its viewerUrl"
+          : "Reload failed — re-run generate.py to restart the localhost server";
+        hint.style.display = "block";
+      } finally {
+        button.disabled = false;
+        button.textContent = "Reload";
+      }
+    });
+
+    reopenChangedFiles();
+    render();
+  </script>
+</body>
+</html>

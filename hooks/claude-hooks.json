@@ -1,0 +1,16 @@
+{
+  "description": "Block agent git push, gh publish, and MCP push tools",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/block-repo-push.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

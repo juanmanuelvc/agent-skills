@@ -1,0 +1,16 @@
+{
+  "name": "agent-skills",
+  "owner": {
+    "name": "juanmanuelvc"
+  },
+  "metadata": {
+    "description": "Personal agent skills and push-blocking hooks"
+  },
+  "plugins": [
+    {
+      "name": "agent-skills",
+      "source": ".",
+      "description": "Skills plus Cursor hooks that block agent push and gh pr create"
+    }
+  ]
+}

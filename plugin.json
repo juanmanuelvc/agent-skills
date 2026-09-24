@@ -1,0 +1,9 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "agent-skills",
+  "version": "1.0.0",
+  "description": "Personal agent skills; push policy in git-workflow skill and Cursor/Claude plugin hooks when installed as a plugin",
+  "author": {
+    "name": "juanmanuelvc"
+  }
+}
