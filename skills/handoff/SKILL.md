@@ -6,6 +6,8 @@ disable-model-invocation: true
 
 # Handoff
 
+For multi-PR slice work, end with **hop**'s `## Handoff` block and update progress via **waypoint** (`STATUS.md` / `PLAN.md`). Use this skill for non-slice work or mid-slice context dumps when context is full.
+
 Before closing or resetting context:
 
 - Determine the project name with `basename "$PWD"`.

@@ -16,6 +16,8 @@ project's own `AGENTS.md` only for rules the repo cannot reveal on its own.
 | `pr-drill` | Local PR rehearsal viewer (canvas or HTML) before you push |
 | `versioning` | Semver and git-cliff / release-please guidance |
 | `handoff` | Session scratchpad under `../scratchpad/<project>/` (manual invoke) |
+| `waypoint` | Multi-PR status and handoff updates from scratchpad `STATUS.md` / `PLAN.md` |
+| `hop` | Implement one `PLAN.md` slice in the product repo, then hand off |
 
 **Hooks** (`hooks/block-repo-push.py`): block agent `git push`, related
 send-pack paths, `gh pr create`, and known MCP push tools. Wired for **Cursor**
